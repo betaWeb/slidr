@@ -32,7 +32,8 @@
     "version": "standard-version",
     "reset": "git clean -dfx && git reset --hard && npm i",
     "clean": "trash build test",
-    "prepare-release": "run-s reset test cov:check doc:html version doc:publish"
+    "prepare-release": "run-s reset test cov:check doc:html version doc:publish",
+    "dist": "parcel build build/main/Slidr.js -d dist/ --out-file Slidr.min.js"
   },
   "scripts-info": {
     "info": "Display information about the package scripts",
@@ -45,7 +46,8 @@
     "doc:json": "Generate API documentation in typedoc JSON format",
     "version": "Bump package.json version, update CHANGELOG.md, tag release",
     "reset": "Delete all untracked files and reset the repo to the last commit",
-    "prepare-release": "One-step: clean, build, test, publish docs, and prep a release"
+    "prepare-release": "One-step: clean, build, test, publish docs, and prep a release",
+    "dist": "Compile for browser"
   },
   "engines": {
     "node": ">=8.9"
