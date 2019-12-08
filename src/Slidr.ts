@@ -1,6 +1,12 @@
 import Slide from "./Slide";
 import SlideProps from "./Slide";
 
+declare global {
+    interface Window {
+        Slidr:any;
+    }
+}
+
 type SliderOptions = {
     loops?: Number
     animate?: Boolean
@@ -195,3 +201,6 @@ export default class Slidr {
     }
 
 }
+
+if (!window.hasOwnProperty('Slidr'))
+    window.Slidr = Slidr
