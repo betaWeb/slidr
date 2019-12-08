@@ -18,12 +18,12 @@ To install SlidR, you just have to download `Slidr.min.js` in the `dist` folder 
 Here a basic HTML form with a `.slider` element contains 2 slides :
 ```HTML
 <div class="slider">
-	<div data-slide="slide1" class="slide">Slide #1</div>
-	<div data-slide="slide2" class="slide">Slide #2</div>
+    <div data-slide="slide1" class="slide">Slide #1</div>
+    <div data-slide="slide2" class="slide">Slide #2</div>
 </div>
 ```
 
-| The slides **MUST HAVE** a `data-slide` attribute.
+> The slides **MUST HAVE** a `data-slide` attribute.
 
 <br>
 
