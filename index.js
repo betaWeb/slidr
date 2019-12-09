@@ -1,1 +1,1 @@
-window.Slidr = require('./build/main/Slidr').default
+window.Slidr = require('./build/browser/Slidr').default

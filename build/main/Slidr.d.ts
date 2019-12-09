@@ -1,10 +1,5 @@
 import Slide from "./Slide";
 import SlideProps from "./Slide";
-declare global {
-    interface Window {
-        Slidr: any;
-    }
-}
 declare type SliderOptions = {
     loops?: Number;
     animate?: Boolean;

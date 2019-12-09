@@ -1,12 +1,6 @@
 import Slide from "./Slide";
 import SlideProps from "./Slide";
 
-declare global {
-    interface Window {
-        Slidr:any;
-    }
-}
-
 type SliderOptions = {
     loops?: Number
     animate?: Boolean
@@ -155,12 +149,14 @@ export default class Slidr {
         this._dispatchEvent('beforeEnter')
         this.current_slide.dispatchEvent('beforeEnter')
 
-        document
-                .querySelectorAll(`[data-slide]:not(${this.current_slide.selector})`)
-                .forEach(el => el.classList.remove(this.options.enter_class))
+        if (this.options.animate)
+            document
+                    .querySelectorAll(`[data-slide]:not(${this.current_slide.selector})`)
+                    .forEach(el => el.classList.remove(this.options.enter_class))
 
         window.setTimeout((): void => {
-            document.querySelector(this.current_slide.selector).classList.add(this.options.enter_class)
+            if (this.options.animate)
+                document.querySelector(this.current_slide.selector).classList.add(this.options.enter_class)
 
             this.current_slide.dispatchEvent('shown')
 
@@ -196,11 +192,8 @@ export default class Slidr {
      * @param {String} event_name
      * @private
      */
-    private _dispatchEvent(event_name: string): void {
-        this._events[event_name].call(this)
+    private _dispatchEvent(event_name: string): Function {
+        return this._events[event_name].call(this)
     }
 
 }
-
-if (!window.hasOwnProperty('Slidr'))
-    window.Slidr = Slidr

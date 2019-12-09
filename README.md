@@ -1,6 +1,8 @@
 # SlidR
 
-A simple JS library to handle HTML sliders
+A simple JS library to handle HTML sliders.
+
+Here is a [live demo](https://codepen.io/betaweb/pen/GRgoKbN).
 
 <br><br>
 
