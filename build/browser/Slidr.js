@@ -12,16 +12,21 @@ var __assign = (this && this.__assign) || function () {
 import Slide from "./Slide";
 /**
  * @class
- * @property {SliderOptions} options
- * @property {SlideProps[]} slides
+ * @property {Object} options
+ * @property {Slide[]} slides
  * @property {Number} index
  * @property {Number} loops
  * @property {[String]: Function} _events
+ * @property {Number|null} _current_loop
  */
 var Slidr = /** @class */ (function () {
     /**
      * @constructor
-     * @param {SliderOptions} options
+     * @param {Object} options
+     * @param {Number} options.loops
+     * @param {Boolean} options.animate
+     * @param {String} options.animation_class
+     * @param {String} options.enter_class
      */
     function Slidr(options) {
         if (options === void 0) { options = {}; }
@@ -35,12 +40,15 @@ var Slidr = /** @class */ (function () {
             'loopend': function () { },
             'change': function () { }
         };
+        this._current_loop = null;
+        this._previous_slide = null;
         if (this.options.container && this.options.container.length)
             this._buildFromHTML();
     }
     Object.defineProperty(Slidr, "DEFAULT_OPTIONS", {
         /**
-         * @returns {SliderOptions}
+         * @returns {Object}
+         * @public
          */
         get: function () {
             return {
@@ -56,6 +64,7 @@ var Slidr = /** @class */ (function () {
     Object.defineProperty(Slidr.prototype, "current_slide", {
         /**
          * @returns {Slide}
+         * @public
          */
         get: function () {
             return this.slides[this.index];
@@ -63,12 +72,29 @@ var Slidr = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Slidr.prototype, "progress", {
+        /**
+         * Returns slider progress in percent
+         *
+         * @returns {Number}
+         * @public
+         */
+        get: function () {
+            if (!this.current_slide || !this.slides.length)
+                return 0;
+            return ((this.current_slide.index + 1) * 100) / this.slides.length;
+        },
+        enumerable: true,
+        configurable: true
+    });
     /**
      * @returns {Slidr}
+     * @public
      */
     Slidr.prototype.add = function (slide_props) {
         var slide = new Slide(slide_props);
-        slide.index = this.slides.push(slide);
+        var index = this.slides.push(slide);
+        slide.index = index - 1;
         if (this.options.animate)
             document
                 .querySelector(slide.selector)
@@ -77,29 +103,24 @@ var Slidr = /** @class */ (function () {
     };
     /**
      * @returns {Slidr}
+     * @public
      */
     Slidr.prototype.run = function () {
-        if (this.index >= this.slides.length) {
-            this.index = 0;
-            this.loops++;
-            if (this.loops === this.options.loops) {
-                this._dispatchEvent('loopend');
-                return this;
-            }
-        }
+        this._clearCurrentLoop();
         this.current_slide.active = true;
         this._dispatchEvent('change');
         try {
             this._slide();
         }
         catch (e) {
-            throw e;
+            throw new Error("[Err] Slidr.run :: " + e.message);
         }
         return this;
     };
     /**
      * @param {Number} index
      * @returns {Slide|null}
+     * @public
      */
     Slidr.prototype.getSlideByIndex = function (index) {
         return this.slides[index] || null;
@@ -107,6 +128,7 @@ var Slidr = /** @class */ (function () {
     /**
      * @param {String} name
      * @returns {Slide|null}
+     * @public
      */
     Slidr.prototype.getSlideByName = function (name) {
         return this.slides.find(function (slide) { return slide.name === name; }) || null;
@@ -116,12 +138,53 @@ var Slidr = /** @class */ (function () {
      * @param {String} event_name
      * @param {Function} callback
      * @returns {Slidr}
+     * @public
      */
     Slidr.prototype.listen = function (event_name, callback) {
         if (!Object.keys(this._events).includes(event_name))
             throw new Error("[Err] Slidr.listen :: Event '" + event_name + "' does not exists.");
         this._events[event_name] = callback;
         return this;
+    };
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    Slidr.prototype.prev = function () {
+        this._beforeSlideChange();
+        if (this.index - 1 < 0)
+            this.index = this.slides.length - 1;
+        else
+            this.index -= 1;
+        return this.run();
+    };
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    Slidr.prototype.next = function () {
+        this._beforeSlideChange();
+        if (this.index + 1 > this.slides.length - 1) {
+            this.index = 0;
+            this.loops++;
+            if (this.loops === this.options.loops) {
+                this._clearCurrentLoop();
+                this._dispatchEvent('loopend');
+                return this;
+            }
+        }
+        else
+            this.index += 1;
+        return this.run();
+    };
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    Slidr.prototype.goTo = function (index) {
+        this._beforeSlideChange();
+        this.index = this.slides[index] ? index : 0;
+        return this.run();
     };
     /**
      * @throws {Error}
@@ -133,22 +196,34 @@ var Slidr = /** @class */ (function () {
             throw new Error('[Err] Slidr._slide :: no slide found at index ' + this.index);
         this._dispatchEvent('beforeEnter');
         this.current_slide.dispatchEvent('beforeEnter');
-        if (this.options.animate)
-            document
-                .querySelectorAll("[data-slide]:not(" + this.current_slide.selector + ")")
-                .forEach(function (el) { return el.classList.remove(_this.options.enter_class); });
-        window.setTimeout(function () {
+        if (this.options.animate && this._previous_slide !== null)
+            this._previous_slide.element.classList.remove(this.options.enter_class);
+        var animation_loop = window.setTimeout(function () {
+            window.clearTimeout(animation_loop);
+            animation_loop = null;
             if (_this.options.animate)
                 document.querySelector(_this.current_slide.selector).classList.add(_this.options.enter_class);
             _this.current_slide.dispatchEvent('shown');
-            window.setTimeout(function () {
-                _this._dispatchEvent('beforeLeave');
-                _this.current_slide.dispatchEvent('beforeLeave');
-                _this.current_slide.active = false;
-                _this.index++;
-                _this.run();
-            }, _this.current_slide.timeout);
+            _this._current_loop = window.setTimeout(_this.next.bind(_this), _this.current_slide.timeout);
         }, this.options.animate ? 350 : 0);
+    };
+    /**
+     * @private
+     */
+    Slidr.prototype._clearCurrentLoop = function () {
+        if (this._current_loop !== null) {
+            window.clearTimeout(this._current_loop);
+            this._current_loop = null;
+        }
+    };
+    /**
+     * @private
+     */
+    Slidr.prototype._beforeSlideChange = function () {
+        this._dispatchEvent('beforeLeave');
+        this.current_slide.dispatchEvent('beforeLeave');
+        this.current_slide.active = false;
+        this._previous_slide = this.current_slide;
     };
     /**
      * @private
@@ -158,7 +233,8 @@ var Slidr = /** @class */ (function () {
         var slides = document.querySelectorAll(this.options.container + ' [data-slide]');
         if (!slides)
             throw new Error("[Err] Slidr._buildFromHTML :: No slides found on container element '" + this.options.container + "'");
-        slides.forEach(function (_a) {
+        Array.from(slides)
+            .forEach(function (_a) {
             var dataset = _a.dataset;
             if (dataset.slide && dataset.slide.length) {
                 _this.add({

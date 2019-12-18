@@ -1,7 +1,7 @@
 import Slide from "./Slide";
 import SlideProps from "./Slide";
 
-type SliderOptions = {
+export type SliderOptions = {
     loops?: Number
     animate?: Boolean
     animation_class?: string
@@ -11,11 +11,12 @@ type SliderOptions = {
 
 /**
  * @class
- * @property {SliderOptions} options
- * @property {SlideProps[]} slides
+ * @property {Object} options
+ * @property {Slide[]} slides
  * @property {Number} index
  * @property {Number} loops
  * @property {[String]: Function} _events
+ * @property {Number|null} _current_loop
  */
 export default class Slidr {
 
@@ -23,10 +24,13 @@ export default class Slidr {
     public slides: Slide[]
     public index: number
     public loops: number
-    public _events: Object
+    private _events: Object
+    private _current_loop?: number
+    private _previous_slide?: Slide
 
     /**
-     * @returns {SliderOptions}
+     * @returns {Object}
+     * @public
      */
     public static get DEFAULT_OPTIONS(): SliderOptions {
         return {
@@ -39,17 +43,33 @@ export default class Slidr {
 
     /**
      * @returns {Slide}
+     * @public
      */
     public get current_slide(): Slide {
         return this.slides[this.index]
     }
 
     /**
+     * Returns slider progress in percent
+     * 
+     * @returns {Number}
+     * @public
+     */
+    public get progress(): Number {
+        if (!this.current_slide || !this.slides.length) return 0
+        return ((this.current_slide.index + 1) * 100) / this.slides.length
+    }
+
+    /**
      * @constructor
-     * @param {SliderOptions} options
+     * @param {Object} options
+     * @param {Number} options.loops
+     * @param {Boolean} options.animate
+     * @param {String} options.animation_class
+     * @param {String} options.enter_class
      */
     constructor(options: SliderOptions = {}) {
-        this.options = <SliderOptions> {
+        this.options = <SliderOptions>{
             ...Slidr.DEFAULT_OPTIONS,
             ...options
         }
@@ -57,11 +77,13 @@ export default class Slidr {
         this.index = 0
         this.loops = 0
         this._events = {
-            'beforeEnter': () => {},
-            'beforeLeave': () => {},
-            'loopend': () => {},
-            'change': () => {}
+            'beforeEnter': () => { },
+            'beforeLeave': () => { },
+            'loopend': () => { },
+            'change': () => { }
         }
+        this._current_loop = null
+        this._previous_slide = null
 
         if (this.options.container && this.options.container.length)
             this._buildFromHTML()
@@ -69,10 +91,13 @@ export default class Slidr {
 
     /**
      * @returns {Slidr}
+     * @public
      */
     public add(slide_props: SlideProps): Slidr {
         const slide = new Slide(slide_props)
-        slide.index = this.slides.push(slide)
+        let index = this.slides.push(slide)
+
+        slide.index = index - 1
 
         if (this.options.animate)
             document
@@ -84,16 +109,10 @@ export default class Slidr {
 
     /**
      * @returns {Slidr}
+     * @public
      */
     public run(): Slidr {
-        if (this.index >= this.slides.length) {
-            this.index = 0
-            this.loops++
-            if (this.loops === this.options.loops) {
-                this._dispatchEvent('loopend')
-                return this
-            }
-        }
+        this._clearCurrentLoop()
 
         this.current_slide.active = true
         this._dispatchEvent('change')
@@ -101,7 +120,7 @@ export default class Slidr {
         try {
             this._slide()
         } catch (e) {
-            throw e
+            throw new Error(`[Err] Slidr.run :: ${e.message}`)
         }
 
         return this
@@ -110,6 +129,7 @@ export default class Slidr {
     /**
      * @param {Number} index
      * @returns {Slide|null}
+     * @public
      */
     public getSlideByIndex(index: number): Slide {
         return this.slides[index] || null
@@ -118,8 +138,9 @@ export default class Slidr {
     /**
      * @param {String} name
      * @returns {Slide|null}
+     * @public
      */
-    public getSlideByName(name: String): (Slide|null) {
+    public getSlideByName(name: String): (Slide | null) {
         return this.slides.find(slide => slide.name === name) || null
     }
 
@@ -128,6 +149,7 @@ export default class Slidr {
      * @param {String} event_name
      * @param {Function} callback
      * @returns {Slidr}
+     * @public
      */
     public listen(event_name: string, callback: Function): Slidr {
         if (!Object.keys(this._events).includes(event_name))
@@ -136,6 +158,51 @@ export default class Slidr {
         this._events[event_name] = callback
 
         return this
+    }
+
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    public prev(): Slidr {
+        this._beforeSlideChange()
+
+        if (this.index - 1 < 0)
+            this.index = this.slides.length - 1
+        else this.index -= 1
+
+        return this.run()
+    }
+
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    public next(): Slidr {
+        this._beforeSlideChange()
+
+        if (this.index + 1 > this.slides.length - 1) {
+            this.index = 0
+            this.loops++
+
+            if (this.loops === this.options.loops) {
+                this._clearCurrentLoop()
+                this._dispatchEvent('loopend')
+                return this
+            }
+        } else this.index += 1
+
+        return this.run()
+    }
+
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    goTo(index) {
+        this._beforeSlideChange()
+        this.index = this.slides[index] ? index : 0
+        return this.run()
     }
 
     /**
@@ -149,25 +216,40 @@ export default class Slidr {
         this._dispatchEvent('beforeEnter')
         this.current_slide.dispatchEvent('beforeEnter')
 
-        if (this.options.animate)
-            document
-                    .querySelectorAll(`[data-slide]:not(${this.current_slide.selector})`)
-                    .forEach(el => el.classList.remove(this.options.enter_class))
+        if (this.options.animate && this._previous_slide !== null)
+            this._previous_slide.element.classList.remove(this.options.enter_class)
 
-        window.setTimeout((): void => {
+        let animation_loop = window.setTimeout((): void => {
+            window.clearTimeout(animation_loop)
+            animation_loop = null
+
             if (this.options.animate)
                 document.querySelector(this.current_slide.selector).classList.add(this.options.enter_class)
 
             this.current_slide.dispatchEvent('shown')
 
-            window.setTimeout(() => {
-                this._dispatchEvent('beforeLeave')
-                this.current_slide.dispatchEvent('beforeLeave')
-                this.current_slide.active = false
-                this.index++
-                this.run()
-            }, this.current_slide.timeout)
+            this._current_loop = window.setTimeout(this.next.bind(this), this.current_slide.timeout)
         }, this.options.animate ? 350 : 0)
+    }
+
+    /**
+     * @private
+     */
+    private _clearCurrentLoop(): void {
+        if (this._current_loop !== null) {
+            window.clearTimeout(this._current_loop)
+            this._current_loop = null
+        }
+    }
+
+    /**
+     * @private
+     */
+    private _beforeSlideChange(): void {
+        this._dispatchEvent('beforeLeave')
+        this.current_slide.dispatchEvent('beforeLeave')
+        this.current_slide.active = false
+        this._previous_slide = this.current_slide
     }
 
     /**
@@ -175,17 +257,19 @@ export default class Slidr {
      */
     private _buildFromHTML(): void {
         const slides = document.querySelectorAll(this.options.container + ' [data-slide]')
+
         if (!slides)
             throw new Error(`[Err] Slidr._buildFromHTML :: No slides found on container element '${this.options.container}'`)
 
-        slides.forEach(({dataset}: HTMLElement) => {
-            if (dataset.slide &&dataset.slide.length) {
-                this.add({
-                    name: dataset.slide,
-                    timeout: dataset.timeout ? parseInt(dataset.timeout, 10) : 0
-                } as SlideProps)
-            }
-        })
+        Array.from(slides)
+            .forEach(({ dataset }: HTMLElement) => {
+                if (dataset.slide && dataset.slide.length) {
+                    this.add({
+                        name: dataset.slide,
+                        timeout: dataset.timeout ? parseInt(dataset.timeout, 10) : 0
+                    } as SlideProps)
+                }
+            })
     }
 
     /**

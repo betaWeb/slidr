@@ -4,6 +4,7 @@ html, body {
     width: 100vw;
     height: 100vh;
     font-family: sans-serif;
+    background-color: #222;
 }
 
 .slider {
@@ -14,6 +15,57 @@ html, body {
     left: 0;
     width: 100%;
     height: 100%;
+}
+
+.slider__nav {
+    position: fixed;
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 50px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+}
+
+.slider__nav .slider__prev,
+.slider__nav .slider__next {
+    background-color: transparent;
+    border: none;
+    color: #fff;
+    outline: none;
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 5px;
+    margin: 0 .5rem;
+    opacity: .5;
+    transition: opacity .3s;
+}
+
+.slider__nav .slider__prev:hover,
+.slider__nav .slider__next:hover,
+.slider__nav .nav__dot:hover,
+.slider__nav .nav__dot.active {
+    opacity: .8;
+}
+
+.slider__nav .nav__dots {
+    display: inline-flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.slider__nav .nav__dot {
+    background-color: #fff;
+    opacity: 0.5;
+    transition: opacity .3s;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin: 0 .25rem;
+    cursor: pointer;
 }
 
 .slide {
@@ -78,9 +130,22 @@ html, body {
     top: 0;
     right: 0;
     color: #fff;
-    opacity: .9;
+    opacity: .7;
     font-size: 2rem;
-    z-index: 4;
+    z-index: 10;
+}
+
+.slider_progress {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 4px;
+    z-index: 10;
+    background-color: #fff;
+    opacity: .5;
+    transition: width .3s;
 }
 
 @keyframes shake {

@@ -12,7 +12,7 @@ export type SlideProps = {
  */
 export default class Slide {
 
-    public element: HTMLElement|null;
+    public element: HTMLElement | null;
     private _properties: SlideProps;
     private _index: number;
     private _active: Boolean;
@@ -45,9 +45,9 @@ export default class Slide {
         return {
             name: '',
             timeout: 0,
-            shown: _ => {},
-            beforeEnter: _ => {},
-            beforeLeave: _ => {}
+            shown: _ => { },
+            beforeEnter: _ => { },
+            beforeLeave: _ => { }
         }
     }
 
@@ -92,7 +92,7 @@ export default class Slide {
             ...properties
         };
 
-        this.element = document.querySelector(this.selector)
+        this.element = document.querySelector(this.selector) as HTMLElement
 
         if (this.element === null)
             throw new Error(`[Err] Slide.constructor :: DOM element '${this.selector}' does not exists`)
