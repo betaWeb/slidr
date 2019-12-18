@@ -25,8 +25,10 @@ export default class Slidr {
     public index: number
     public loops: number
     private _events: Object
-    private _current_loop?: number
-    private _previous_slide?: Slide
+    private _current_loop?: number | null
+    private _previous_slide?: Slide | null
+    private _loop_start: number
+    private _time_remaining: number
 
     /**
      * @returns {Object}
@@ -84,6 +86,8 @@ export default class Slidr {
         }
         this._current_loop = null
         this._previous_slide = null
+        this._loop_start = Date.now()
+        this._time_remaining = 0
 
         if (this.options.container && this.options.container.length)
             this._buildFromHTML()
@@ -112,7 +116,7 @@ export default class Slidr {
      * @public
      */
     public run(): Slidr {
-        this._clearCurrentLoop()
+        this.stop()
 
         this.current_slide.active = true
         this._dispatchEvent('change')
@@ -186,7 +190,7 @@ export default class Slidr {
             this.loops++
 
             if (this.loops === this.options.loops) {
-                this._clearCurrentLoop()
+                this.stop()
                 this._dispatchEvent('loopend')
                 return this
             }
@@ -203,6 +207,46 @@ export default class Slidr {
         this._beforeSlideChange()
         this.index = this.slides[index] ? index : 0
         return this.run()
+    }
+
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    public start(): Slidr {
+        this._startTimer(this.current_slide.timeout)
+        return this
+    }
+
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    public stop(): Slidr {
+        if (this._current_loop !== null) {
+            window.clearTimeout(this._current_loop)
+            this._current_loop = null
+        }
+        return this
+    }
+
+    /**
+     * @returns {Number}
+     * @public
+     */
+    public pause(): number {
+        this.stop()
+        this._time_remaining -= Math.round((Date.now() - this._loop_start) / 1000) * 1000
+        return this._time_remaining
+    }
+
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    public resume(): Slidr {
+        this._startTimer(this._time_remaining)
+        return this
     }
 
     /**
@@ -228,18 +272,18 @@ export default class Slidr {
 
             this.current_slide.dispatchEvent('shown')
 
-            this._current_loop = window.setTimeout(this.next.bind(this), this.current_slide.timeout)
+            this.start()
         }, this.options.animate ? 350 : 0)
     }
 
-    /**
-     * @private
-     */
-    private _clearCurrentLoop(): void {
-        if (this._current_loop !== null) {
+    private _startTimer(timeout): void {
+        this._loop_start = Date.now()
+        this._time_remaining = timeout
+
+        if (this._current_loop !== null)
             window.clearTimeout(this._current_loop)
-            this._current_loop = null
-        }
+
+        this._current_loop = window.setTimeout(this.next.bind(this), this._time_remaining)
     }
 
     /**

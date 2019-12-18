@@ -42,6 +42,8 @@ var Slidr = /** @class */ (function () {
         };
         this._current_loop = null;
         this._previous_slide = null;
+        this._loop_start = Date.now();
+        this._time_remaining = 0;
         if (this.options.container && this.options.container.length)
             this._buildFromHTML();
     }
@@ -106,7 +108,7 @@ var Slidr = /** @class */ (function () {
      * @public
      */
     Slidr.prototype.run = function () {
-        this._clearCurrentLoop();
+        this.stop();
         this.current_slide.active = true;
         this._dispatchEvent('change');
         try {
@@ -168,7 +170,7 @@ var Slidr = /** @class */ (function () {
             this.index = 0;
             this.loops++;
             if (this.loops === this.options.loops) {
-                this._clearCurrentLoop();
+                this.stop();
                 this._dispatchEvent('loopend');
                 return this;
             }
@@ -185,6 +187,42 @@ var Slidr = /** @class */ (function () {
         this._beforeSlideChange();
         this.index = this.slides[index] ? index : 0;
         return this.run();
+    };
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    Slidr.prototype.start = function () {
+        this._startTimer(this.current_slide.timeout);
+        return this;
+    };
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    Slidr.prototype.stop = function () {
+        if (this._current_loop !== null) {
+            window.clearTimeout(this._current_loop);
+            this._current_loop = null;
+        }
+        return this;
+    };
+    /**
+     * @returns {Number}
+     * @public
+     */
+    Slidr.prototype.pause = function () {
+        this.stop();
+        this._time_remaining -= Math.round((Date.now() - this._loop_start) / 1000) * 1000;
+        return this._time_remaining;
+    };
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    Slidr.prototype.resume = function () {
+        this._startTimer(this._time_remaining);
+        return this;
     };
     /**
      * @throws {Error}
@@ -204,17 +242,15 @@ var Slidr = /** @class */ (function () {
             if (_this.options.animate)
                 document.querySelector(_this.current_slide.selector).classList.add(_this.options.enter_class);
             _this.current_slide.dispatchEvent('shown');
-            _this._current_loop = window.setTimeout(_this.next.bind(_this), _this.current_slide.timeout);
+            _this.start();
         }, this.options.animate ? 350 : 0);
     };
-    /**
-     * @private
-     */
-    Slidr.prototype._clearCurrentLoop = function () {
-        if (this._current_loop !== null) {
+    Slidr.prototype._startTimer = function (timeout) {
+        this._loop_start = Date.now();
+        this._time_remaining = timeout;
+        if (this._current_loop !== null)
             window.clearTimeout(this._current_loop);
-            this._current_loop = null;
-        }
+        this._current_loop = window.setTimeout(this.next.bind(this), this._time_remaining);
     };
     /**
      * @private

@@ -24,6 +24,8 @@ export default class Slidr {
     private _events;
     private _current_loop?;
     private _previous_slide?;
+    private _loop_start;
+    private _time_remaining;
     /**
      * @returns {Object}
      * @public
@@ -96,14 +98,31 @@ export default class Slidr {
      */
     goTo(index: any): Slidr;
     /**
+     * @returns {Slidr}
+     * @public
+     */
+    start(): Slidr;
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    stop(): Slidr;
+    /**
+     * @returns {Number}
+     * @public
+     */
+    pause(): number;
+    /**
+     * @returns {Slidr}
+     * @public
+     */
+    resume(): Slidr;
+    /**
      * @throws {Error}
      * @private
      */
     private _slide;
-    /**
-     * @private
-     */
-    private _clearCurrentLoop;
+    private _startTimer;
     /**
      * @private
      */
