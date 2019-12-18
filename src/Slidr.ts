@@ -199,7 +199,7 @@ export default class Slidr {
      * @returns {Slidr}
      * @public
      */
-    goTo(index) {
+    public goTo(index): Slidr {
         this._beforeSlideChange()
         this.index = this.slides[index] ? index : 0
         return this.run()
